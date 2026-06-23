@@ -17,7 +17,7 @@ import {
   HelpCircle,
   AlertCircle
 } from 'lucide-react';
-import { generateStory, generateImage, searchLexicaImage } from './gemini';
+import { generateStory, generateImage } from './gemini';
 import type { StoryConfig, StoryPage, GeneratedBook } from './gemini';
 import { saveBookDB, getBooksDB, deleteBookDB } from './db';
 
@@ -31,11 +31,11 @@ interface BookWithMetadata extends GeneratedBook {
 }
 
 const THEME_OPTIONS = [
-  { id: 'Fantasy', label: 'Fantasy 🪄', icon: '🪄', promptStyle: 'magical watercolor illustration, children\'s book art, soft lighting, vibrant colors' },
-  { id: 'Sci-Fi', label: 'Sci-Fi 🚀', icon: '🚀', promptStyle: 'dreamy retro-futuristic digital painting, soft glow, children\'s sci-fi illustration' },
-  { id: 'Mystery', label: 'Mystery 🕵️‍♂️', icon: '🕵️‍♂️', promptStyle: 'cozy mystery watercolor, warm candlelight, detailed children\'s book illustration' },
-  { id: 'Fairy Tale', label: 'Fairy Tale 🏰', icon: '🏰', promptStyle: 'enchanted storybook illustration, gold leaf details, whimsical pastel colors' },
-  { id: 'Custom', label: 'Custom 🎨', icon: '🎨', promptStyle: 'beautiful digital children\'s illustration' },
+  { id: 'Fantasy', label: '奇幻 🪄', icon: '🪄', promptStyle: 'magical watercolor illustration, children\'s book art, soft lighting, vibrant colors' },
+  { id: 'Sci-Fi', label: '科幻 🚀', icon: '🚀', promptStyle: 'dreamy retro-futuristic digital painting, soft glow, children\'s sci-fi illustration' },
+  { id: 'Mystery', label: '解謎 🕵️‍♂️', icon: '🕵️‍♂️', promptStyle: 'cozy mystery watercolor, warm candlelight, detailed children\'s book illustration' },
+  { id: 'Fairy Tale', label: '童話 🏰', icon: '🏰', promptStyle: 'enchanted storybook illustration, gold leaf details, whimsical pastel colors' },
+  { id: 'Custom', label: '自訂 🎨', icon: '🎨', promptStyle: 'beautiful digital children\'s illustration' },
 ];
 
 export default function App() {
@@ -49,16 +49,15 @@ export default function App() {
   // Setup Wizard State
   const [theme, setTheme] = useState<string>('Fantasy');
   const [customStyle, setCustomStyle] = useState<string>('');
-  const [protagonistName, setProtagonistName] = useState<string>('Leo');
-  const [protagonistDescription, setProtagonistDescription] = useState<string>('A brave little lion cub with a fluffy, golden mane and green eyes');
-  const [companionName, setCompanionName] = useState<string>('Pip');
-  const [companionDescription, setCompanionDescription] = useState<string>('A tiny bluebird who always carries a satchel of glittering star dust');
-  const [specialTool, setSpecialTool] = useState<string>('A glowing star lantern');
+  const [protagonistName, setProtagonistName] = useState<string>('里歐');
+  const [protagonistDescription, setProtagonistDescription] = useState<string>('一隻勇敢的小獅子，有蓬鬆的金色鬃毛和綠色眼睛');
+  const [companionName, setCompanionName] = useState<string>('皮皮');
+  const [companionDescription, setCompanionDescription] = useState<string>('一隻總是背著閃亮星塵小包包的藍色小鳥');
+  const [specialTool, setSpecialTool] = useState<string>('一盞會發光的星星提燈');
   const [pagesCount, setPagesCount] = useState<number>(5);
   const [tone, setTone] = useState<string>('Whimsical');
   const [ageGroup, setAgeGroup] = useState<string>('6-8 years');
   const [model, setModel] = useState<string>('gemini-2.5-flash');
-  const [imageGenerator, setImageGenerator] = useState<'gemini' | 'lexica' | 'pollinations'>('lexica');
   const [illustrationStyle, setIllustrationStyle] = useState<'fairy' | 'simple_strokes'>('fairy');
 
   // App States
@@ -125,12 +124,12 @@ export default function App() {
       const data = await response.json();
       if (data.error === 'KV_NOT_BOUND') {
         setSyncStatus('error');
-        setSyncError("Cloudflare KV database not configured. Please bind a KV namespace named 'LIBRARY_KV' in your Cloudflare dashboard under project Settings > Functions > KV namespace bindings to enable sync.");
+        setSyncError("尚未設定 Cloudflare KV 資料庫。請在 Cloudflare 專案的 Settings > Functions > KV namespace bindings 綁定名為 'LIBRARY_KV' 的 KV 命名空間，才能啟用同步。");
       }
     } catch (e: any) {
       console.error('Failed to push library to sync server:', e);
       setSyncStatus('error');
-      setSyncError(e.message || 'Network error syncing library');
+      setSyncError(e.message || '同步書庫時發生網路錯誤');
     }
   };
 
@@ -145,7 +144,7 @@ export default function App() {
       
       if (remoteBooks && remoteBooks.error === 'KV_NOT_BOUND') {
         setSyncStatus('error');
-        setSyncError("Cloudflare KV database not configured. Please bind a KV namespace named 'LIBRARY_KV' in your Cloudflare dashboard under project Settings > Functions > KV namespace bindings to enable sync.");
+        setSyncError("尚未設定 Cloudflare KV 資料庫。請在 Cloudflare 專案的 Settings > Functions > KV namespace bindings 綁定名為 'LIBRARY_KV' 的 KV 命名空間，才能啟用同步。");
         return;
       }
 
@@ -164,12 +163,12 @@ export default function App() {
         await pushLibraryToCloud(key, mergedBooks);
         setSyncStatus('idle');
       } else {
-        throw new Error('Received invalid sync data format');
+        throw new Error('收到的同步資料格式無效');
       }
     } catch (e: any) {
       console.error('Sync failed:', e);
       setSyncStatus('error');
-      setSyncError(e.message || 'Sync failed due to a network or server issue.');
+      setSyncError(e.message || '同步失敗，可能是網路或伺服器問題。');
     }
   };
 
@@ -264,7 +263,7 @@ export default function App() {
 
     setLoading(true);
     setError(null);
-    setLoadingStep('Consulting the wizarding scribe (Connecting to Gemini)...');
+    setLoadingStep('正在聯絡魔法書記官（連線到 Gemini）...');
 
     const config: StoryConfig = {
       theme,
@@ -280,7 +279,7 @@ export default function App() {
     };
 
     try {
-      setLoadingStep('Drafting the adventure blueprint...');
+      setLoadingStep('正在撰寫冒險藍圖...');
       const responseBook = await generateStory(apiKey, config, model);
 
       // Generate random seed for each page
@@ -294,29 +293,15 @@ export default function App() {
         : (selectedTheme ? selectedTheme.promptStyle : (customStyle || 'children\'s book illustration'));
 
       const images: string[] = [];
-      if (imageGenerator === 'gemini') {
-        for (let i = 0; i < responseBook.pages.length; i++) {
-          setLoadingStep(`Painting illustration for page ${i + 1} of ${responseBook.pages.length}...`);
-          const page = responseBook.pages[i];
-          try {
-            const imgData = await generateImage(apiKey, `${page.illustrationPrompt}, ${styleSuffix}`);
-            images.push(imgData);
-          } catch (e: any) {
-            console.error(`Failed to generate image for page ${i + 1}`, e);
-            images.push('');
-          }
-        }
-      } else if (imageGenerator === 'lexica') {
-        for (let i = 0; i < responseBook.pages.length; i++) {
-          setLoadingStep(`Finding matching illustration for page ${i + 1} of ${responseBook.pages.length}...`);
-          const page = responseBook.pages[i];
-          try {
-            const imgUrl = await searchLexicaImage(`${page.illustrationPrompt}, ${styleSuffix}`);
-            images.push(imgUrl);
-          } catch (e: any) {
-            console.error(`Failed to search Lexica image for page ${i + 1}`, e);
-            images.push('');
-          }
+      for (let i = 0; i < responseBook.pages.length; i++) {
+        setLoadingStep(`正在繪製第 ${i + 1} / ${responseBook.pages.length} 頁插圖...`);
+        const page = responseBook.pages[i];
+        try {
+          const imgData = await generateImage(apiKey, `${page.illustrationPrompt}, ${styleSuffix}`);
+          images.push(imgData);
+        } catch (e: any) {
+          console.error(`Failed to generate image for page ${i + 1}`, e);
+          images.push('');
         }
       }
 
@@ -326,7 +311,7 @@ export default function App() {
         createdAt: new Date().toLocaleDateString(),
         config,
         seeds,
-        images: (imageGenerator === 'gemini' || imageGenerator === 'lexica') ? images : undefined,
+        images,
         timestamp: Date.now()
       };
 
@@ -343,7 +328,7 @@ export default function App() {
       setCurrentPageIndex(0);
     } catch (err: any) {
       console.error(err);
-      setError(err.message || 'An unexpected error occurred. Please verify your API Key and network connection.');
+      setError(err.message || '發生未預期的錯誤。請確認 API Key 與網路連線。');
     } finally {
       setLoading(false);
     }
@@ -358,62 +343,29 @@ export default function App() {
       ? 'minimalist simple black ink outline sketch on a clean solid white background, cute childlike marker doodle style, simple strokes, black ink on white paper, no color, no background detail'
       : (selectedTheme ? selectedTheme.promptStyle : (customStyle || 'children\'s book illustration'));
 
-    if (imageGenerator === 'gemini') {
-      if (!apiKey && !serverHasKey) {
-        setShowKeyModal(true);
-        return;
-      }
-      setImageLoading(true);
-      try {
-        const page = currentBook.pages[currentPageIndex];
-        const newImgData = await generateImage(apiKey, `${page.illustrationPrompt}, ${styleSuffix}`);
-        
-        const updatedImages = currentBook.images ? [...currentBook.images] : Array(currentBook.pages.length).fill('');
-        updatedImages[currentPageIndex] = newImgData;
-        
-        const updatedBook = {
-          ...currentBook,
-          images: updatedImages
-        };
-        
-        await updateBookInLibrary(updatedBook);
-      } catch (e: any) {
-        console.error(e);
-        alert(e.message || 'Failed to regenerate image with Gemini.');
-      } finally {
-        setImageLoading(false);
-      }
-    } else if (imageGenerator === 'lexica') {
-      setImageLoading(true);
-      try {
-        const page = currentBook.pages[currentPageIndex];
-        const newImgUrl = await searchLexicaImage(`${page.illustrationPrompt}, ${styleSuffix}`);
-        
-        const updatedImages = currentBook.images ? [...currentBook.images] : Array(currentBook.pages.length).fill('');
-        updatedImages[currentPageIndex] = newImgUrl;
-        
-        const updatedBook = {
-          ...currentBook,
-          images: updatedImages
-        };
-        
-        await updateBookInLibrary(updatedBook);
-      } catch (e: any) {
-        console.error(e);
-        alert(e.message || 'Failed to find image with Lexica.');
-      } finally {
-        setImageLoading(false);
-      }
-    } else {
-      const updatedSeeds = [...currentBook.seeds];
-      updatedSeeds[currentPageIndex] = Math.floor(Math.random() * 1000000);
-      
+    if (!apiKey && !serverHasKey) {
+      setShowKeyModal(true);
+      return;
+    }
+    setImageLoading(true);
+    try {
+      const page = currentBook.pages[currentPageIndex];
+      const newImgData = await generateImage(apiKey, `${page.illustrationPrompt}, ${styleSuffix}`);
+
+      const updatedImages = currentBook.images ? [...currentBook.images] : Array(currentBook.pages.length).fill('');
+      updatedImages[currentPageIndex] = newImgData;
+
       const updatedBook = {
         ...currentBook,
-        seeds: updatedSeeds
+        images: updatedImages
       };
 
       await updateBookInLibrary(updatedBook);
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || '無法使用 Gemini 重新生成插圖。');
+    } finally {
+      setImageLoading(false);
     }
   };
 
@@ -474,7 +426,7 @@ export default function App() {
       }
     } catch (e: any) {
       console.error('Failed to delete book', e);
-      alert('Failed to delete book: ' + (e.message || e));
+      alert('刪除書本失敗：' + (e.message || e));
     }
   };
 
@@ -493,11 +445,11 @@ export default function App() {
         <div class="page-container">
           <div class="book-card">
             <div class="image-side">
-              <img src="${imageUrl}" alt="Illustration for page ${idx + 1}" />
+              <img src="${imageUrl}" alt="第 ${idx + 1} 頁插圖" />
             </div>
             <div class="text-side">
               <div class="story-content">${page.storyText}</div>
-              <div class="page-footer">Page ${idx + 1}</div>
+              <div class="page-footer">第 ${idx + 1} 頁</div>
             </div>
           </div>
         </div>
@@ -506,16 +458,16 @@ export default function App() {
 
     const htmlContent = `
       <!DOCTYPE html>
-      <html lang="en">
+      <html lang="zh-Hant">
       <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>${currentBook.title} - Adventure Book</title>
-        <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+        <title>${currentBook.title} - 冒險故事書</title>
+        <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600&family=Noto+Serif+TC:wght@400;600;700&display=swap" rel="stylesheet">
         <style>
           body {
             background-color: #0c0f1d;
-            font-family: 'Outfit', sans-serif;
+            font-family: 'Noto Sans TC', sans-serif;
             color: #f8fafc;
             margin: 0;
             padding: 40px 20px;
@@ -524,7 +476,7 @@ export default function App() {
             align-items: center;
           }
           h1 {
-            font-family: 'Playfair Display', serif;
+            font-family: 'Noto Serif TC', serif;
             font-size: 3rem;
             text-align: center;
             margin-bottom: 40px;
@@ -574,13 +526,13 @@ export default function App() {
             background: linear-gradient(to right, #f7f3eb 0%, #fdfbf7 8%, #fdfbf7 100%);
           }
           .story-content {
-            font-family: 'Playfair Display', serif;
+            font-family: 'Noto Serif TC', serif;
             font-size: 1.4rem;
             line-height: 1.7;
             color: #3a3530;
           }
           .page-footer {
-            font-family: 'Playfair Display', serif;
+            font-family: 'Noto Serif TC', serif;
             font-style: italic;
             font-size: 1rem;
             color: #8b8070;
@@ -612,7 +564,7 @@ export default function App() {
       </head>
       <body>
         <div class="no-print-header">
-          <button onclick="window.print()">Print to PDF</button>
+          <button onclick="window.print()">列印成 PDF</button>
         </div>
         <h1>${currentBook.title}</h1>
         ${bookPagesHtml}
@@ -633,7 +585,7 @@ export default function App() {
   // Export entire library to JSON file
   const handleExportLibraryJSON = () => {
     if (library.length === 0) {
-      alert("No books in library to export.");
+      alert("書庫目前沒有可匯出的故事書。");
       return;
     }
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(library, null, 2));
@@ -655,11 +607,11 @@ export default function App() {
       try {
         const imported = JSON.parse(e.target?.result as string);
         if (!Array.isArray(imported)) {
-          throw new Error("Imported file is not a valid library array.");
+          throw new Error("匯入的檔案不是有效的書庫陣列。");
         }
         
         setLoading(true);
-        setLoadingStep("Importing stories into library...");
+        setLoadingStep("正在將故事匯入書庫...");
         
         let count = 0;
         for (const book of imported) {
@@ -679,10 +631,10 @@ export default function App() {
           await pushLibraryToCloud(syncKey, updated);
         }
         
-        alert(`Successfully imported ${count} new book(s) into your library!`);
+        alert(`成功匯入 ${count} 本新故事書到書庫！`);
       } catch (err: any) {
         console.error(err);
-        alert("Failed to import library: " + err.message);
+        alert("匯入書庫失敗：" + err.message);
       } finally {
         setLoading(false);
       }
@@ -709,8 +661,8 @@ export default function App() {
       {/* App Header */}
       <header className="app-header no-print">
         <div className="app-title-container">
-          <BookOpen className="app-title-icon" size={32} />
-          <span className="app-logo text-gradient">AdventureForge</span>
+          <BookOpen className="app-title-icon" size={64} />
+          <span className="app-logo text-gradient">胡說亂畫</span>
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -723,11 +675,11 @@ export default function App() {
                 setShowKeyModal(true);
               }
             }}
-            title={apiKey ? "Clear Gemini API Key" : (serverHasKey ? "Configure Custom API Key" : "Configure Gemini API Key")}
+            title={apiKey ? "清除 Gemini API Key" : (serverHasKey ? "設定自訂 API Key" : "設定 Gemini API Key")}
             style={{ padding: '8px 16px', fontSize: '0.9rem' }}
           >
             <Key size={16} />
-            {apiKey ? 'Clear Custom Key' : (serverHasKey ? 'Use Custom Key' : 'Setup API Key')}
+            {apiKey ? '清除自訂 Key' : (serverHasKey ? '使用自訂 Key' : '設定 API Key')}
           </button>
           
           {currentBook && (
@@ -737,7 +689,7 @@ export default function App() {
               style={{ padding: '8px 16px', fontSize: '0.9rem' }}
             >
               <Plus size={16} />
-              New Book
+              新故事書
             </button>
           )}
         </div>
@@ -762,7 +714,7 @@ export default function App() {
                 borderColor: 'var(--primary) transparent transparent transparent'
               }}></div>
             </div>
-            <h3 style={{ fontSize: '1.4rem', marginBottom: '12px' }}>Weaving Magic...</h3>
+            <h3 style={{ fontSize: '1.4rem', marginBottom: '12px' }}>正在編織魔法...</h3>
             <p style={{ color: 'var(--text-secondary)' }}>{loadingStep}</p>
             <style>{`
               @keyframes loading-spin {
@@ -778,7 +730,7 @@ export default function App() {
           <div className="glass-panel" style={{ padding: '24px', borderColor: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.08)', margin: '20px 0', display: 'flex', gap: '16px', alignItems: 'center' }}>
             <AlertCircle size={28} style={{ color: '#ef4444', flexShrink: 0 }} />
             <div>
-              <h4 style={{ color: '#ef4444', fontWeight: 600, marginBottom: '4px' }}>Wizarding Error</h4>
+              <h4 style={{ color: '#ef4444', fontWeight: 600, marginBottom: '4px' }}>魔法出錯了</h4>
               <p style={{ fontSize: '0.95rem', color: 'var(--text-primary)' }}>{error}</p>
             </div>
           </div>
@@ -793,16 +745,16 @@ export default function App() {
                 onClick={() => setCurrentBook(null)}
               >
                 <ArrowLeft size={16} />
-                Back to Library
+                返回書庫
               </button>
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button className="btn btn-secondary" onClick={handleExportHtml}>
                   <Download size={16} />
-                  Export HTML
+                  匯出 HTML
                 </button>
                 <button className="btn btn-accent" onClick={() => window.print()}>
                   <FileText size={16} />
-                  Print PDF
+                  列印 PDF
                 </button>
               </div>
             </div>
@@ -824,7 +776,7 @@ export default function App() {
                     ? `https://robohash.org/${encodeURIComponent(currentBook.pages[currentPageIndex].illustrationPrompt)}?set=set4`
                     : getImageUrl(currentBook.pages[currentPageIndex], currentPageIndex)
                   } 
-                  alt={`Page ${currentPageIndex + 1} illustration`} 
+                  alt={`第 ${currentPageIndex + 1} 頁插圖`}
                   className="book-image"
                   onLoadStart={() => setImageLoading(true)}
                   onLoad={() => setImageLoading(false)}
@@ -845,7 +797,7 @@ export default function App() {
                 <div>
                   {/* Page Footer / Number */}
                   <div className="book-page-number">
-                    Page {currentPageIndex + 1} of {currentBook.pages.length}
+                    第 {currentPageIndex + 1} / {currentBook.pages.length} 頁
                   </div>
                 </div>
               </div>
@@ -862,24 +814,24 @@ export default function App() {
                 }}
               >
                 <ArrowLeft size={16} />
-                Previous Page
+                上一頁
               </button>
               
               <div style={{ display: 'flex', gap: '12px' }}>
                 <button 
                   className="btn btn-secondary"
                   onClick={handleRerollImage}
-                  title="Generate a new variation of this illustration"
+                  title="為這頁插圖生成新的版本"
                 >
                   <RefreshCw size={16} />
-                  Re-roll Image
+                  重抽插圖
                 </button>
                 <button 
                   className="btn btn-secondary"
                   onClick={isEditing ? handleSaveChanges : startEditing}
                 >
                   {isEditing ? <Check size={16} /> : <Edit2 size={16} />}
-                  {isEditing ? 'Save Changes' : 'Edit Page'}
+                  {isEditing ? '儲存變更' : '編輯頁面'}
                 </button>
               </div>
 
@@ -891,7 +843,7 @@ export default function App() {
                   setIsEditing(false);
                 }}
               >
-                Next Page
+                下一頁
                 <ArrowRight size={16} />
               </button>
             </div>
@@ -899,10 +851,10 @@ export default function App() {
             {/* Editor Workspace Panel (Grows/Shrinks when open) */}
             {isEditing && (
               <div className="glass-panel editor-panel no-print" style={{ marginTop: '30px' }}>
-                <h3 style={{ fontSize: '1.2rem', color: 'var(--primary)' }}>Adventure Studio Editor</h3>
+                <h3 style={{ fontSize: '1.2rem', color: 'var(--primary)' }}>冒險工作室編輯器</h3>
                 
                 <div className="form-group">
-                  <label className="form-label">Story Text</label>
+                  <label className="form-label">故事文字</label>
                   <textarea 
                     className="form-textarea"
                     value={editedText}
@@ -912,7 +864,7 @@ export default function App() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Illustration Prompt (AI Description)</label>
+                  <label className="form-label">插圖提示詞（AI 描述）</label>
                   <textarea 
                     className="form-textarea"
                     value={editedPrompt}
@@ -920,13 +872,13 @@ export default function App() {
                     style={{ minHeight: '100px' }}
                   />
                   <small style={{ color: 'var(--text-muted)' }}>
-                    Tip: Keep protagonist descriptions consistent for cohesive storytelling images.
+                    提示：讓主角外觀描述保持一致，插圖風格會更連貫。
                   </small>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-                  <button className="btn btn-secondary" onClick={() => setIsEditing(false)}>Cancel</button>
-                  <button className="btn btn-primary" onClick={handleSaveChanges}>Apply Changes</button>
+                  <button className="btn btn-secondary" onClick={() => setIsEditing(false)}>取消</button>
+                  <button className="btn btn-primary" onClick={handleSaveChanges}>套用變更</button>
                 </div>
               </div>
             )}
@@ -941,7 +893,7 @@ export default function App() {
             <div className="glass-panel" style={{ padding: '32px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', borderBottom: '1px solid var(--border-glass)', paddingBottom: '16px' }}>
                 <Wand2 size={24} style={{ color: 'var(--accent)' }} />
-                <h2 style={{ fontSize: '1.8rem', fontWeight: 600 }}>Create an Illustrated Adventure</h2>
+                <h2 style={{ fontSize: '1.8rem', fontWeight: 600 }}>說個大家都不相信的故事吧</h2>
               </div>
 
               <div className="wizard-grid">
@@ -949,7 +901,7 @@ export default function App() {
                 {/* Left Form: Theme & Protagonist */}
                 <div>
                   <div className="form-group">
-                    <label className="form-label">Select Adventure Theme</label>
+                    <label className="form-label">選擇冒險主題</label>
                     <div className="theme-grid">
                       {THEME_OPTIONS.map((t) => (
                         <div 
@@ -966,11 +918,11 @@ export default function App() {
 
                   {theme === 'Custom' && (
                     <div className="form-group">
-                      <label className="form-label">Define Custom Illustration Style</label>
+                      <label className="form-label">自訂插畫風格</label>
                       <input 
                         type="text" 
                         className="form-input" 
-                        placeholder="e.g. colored pencil sketch, 8-bit retro art, soft claymation"
+                        placeholder="例如：彩色鉛筆素描、8-bit 復古風、柔和黏土動畫風"
                         value={customStyle}
                         onChange={(e) => setCustomStyle(e.target.value)}
                       />
@@ -979,11 +931,11 @@ export default function App() {
 
                   <div className="form-group" style={{ marginTop: '20px' }}>
                     <h4 style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', borderBottom: '1px dashed var(--border-glass)', paddingBottom: '4px', marginBottom: '12px' }}>
-                      Protagonist Details (Ensures Consistent Look)
+                      主角設定
                     </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px', marginTop: '8px' }}>
                       <div className="form-group">
-                        <label className="form-label">Name</label>
+                        <label className="form-label">名字</label>
                         <input 
                           type="text" 
                           className="form-input" 
@@ -992,13 +944,13 @@ export default function App() {
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Appearance (Vivid details)</label>
+                        <label className="form-label">外觀（具體細節）</label>
                         <input 
                           type="text" 
                           className="form-input" 
                           value={protagonistDescription} 
                           onChange={(e) => setProtagonistDescription(e.target.value)}
-                          placeholder="e.g., small brown puppy with a red bandana"
+                          placeholder="例如：戴著紅色領巾的小棕色小狗"
                         />
                       </div>
                     </div>
@@ -1006,39 +958,39 @@ export default function App() {
 
                   <div className="form-group">
                     <h4 style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', borderBottom: '1px dashed var(--border-glass)', paddingBottom: '4px', marginBottom: '12px' }}>
-                      Companion & Tools (Optional)
+                      夥伴與道具（選填）
                     </h4>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px', marginTop: '8px' }}>
                       <div className="form-group">
-                        <label className="form-label">Companion Name</label>
+                        <label className="form-label">夥伴名字</label>
                         <input 
                           type="text" 
                           className="form-input" 
                           value={companionName} 
                           onChange={(e) => setCompanionName(e.target.value)} 
-                          placeholder="e.g., Oliver"
+                          placeholder="例如：奧利佛"
                         />
                       </div>
                       <div className="form-group">
-                        <label className="form-label">Companion Appearance</label>
+                        <label className="form-label">夥伴外觀</label>
                         <input 
                           type="text" 
                           className="form-input" 
                           value={companionDescription} 
                           onChange={(e) => setCompanionDescription(e.target.value)}
-                          placeholder="e.g., fluffy grey owl with yellow eyes"
+                          placeholder="例如：有黃色眼睛的蓬鬆灰貓頭鷹"
                         />
                       </div>
                     </div>
                     
                     <div className="form-group">
-                      <label className="form-label">Special Item / Tool</label>
+                      <label className="form-label">故事線</label>
                       <input 
                         type="text" 
                         className="form-input" 
                         value={specialTool} 
                         onChange={(e) => setSpecialTool(e.target.value)}
-                        placeholder="e.g., magnifying glass that glows near clues"
+                        placeholder="例如：靠近線索時會發光的放大鏡"
                       />
                     </div>
                   </div>
@@ -1047,62 +999,52 @@ export default function App() {
                 {/* Right Form: Settings & Model Choice */}
                 <div>
                   <div className="form-group">
-                    <label className="form-label">Story Tone</label>
+                    <label className="form-label">故事語氣</label>
                     <select className="form-select" value={tone} onChange={(e) => setTone(e.target.value)}>
-                      <option value="Whimsical">Whimsical & Fairy-like</option>
-                      <option value="Epic & Adventurous">Epic & Adventurous</option>
-                      <option value="Mysterious & Cozy">Mysterious & Cozy</option>
-                      <option value="Spooky & Thrilling">Spooky & Thrilling</option>
-                      <option value="Heartwarming & Gentle">Heartwarming & Gentle</option>
+                      <option value="Whimsical">奇幻童話感</option>
+                      <option value="Epic & Adventurous">壯闊冒險</option>
+                      <option value="Mysterious & Cozy">溫暖解謎</option>
+                      <option value="Spooky & Thrilling">微驚悚刺激</option>
+                      <option value="Heartwarming & Gentle">溫馨柔和</option>
                     </select>
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Target Age Group</label>
+                    <label className="form-label">目標年齡</label>
                     <select className="form-select" value={ageGroup} onChange={(e) => setAgeGroup(e.target.value)}>
-                      <option value="3-5 years">Toddler (3-5 years) — Simple words, rhythmic text</option>
-                      <option value="6-8 years">Early Reader (6-8 years) — Whimsical, engaging adventures</option>
-                      <option value="9-12 years">Pre-teen (9-12 years) — Complex plots, riddle Solving</option>
+                      <option value="3-5 years">幼兒（3-5 歲）：簡單詞彙、有節奏感</option>
+                      <option value="6-8 years">初階讀者（6-8 歲）：有趣、容易投入的冒險</option>
+                      <option value="9-12 years">高年級（9-12 歲）：較複雜劇情與解謎</option>
                     </select>
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Page Count</label>
+                    <label className="form-label">頁數</label>
                     <select className="form-select" value={pagesCount.toString()} onChange={(e) => setPagesCount(parseInt(e.target.value))}>
-                      <option value="3">3 Pages (Mini story)</option>
-                      <option value="5">5 Pages (Standard)</option>
-                      <option value="8">8 Pages (Extended)</option>
-                      <option value="10">10 Pages (Full Adventure)</option>
+                      <option value="3">3 頁（迷你故事）</option>
+                      <option value="5">5 頁（標準篇幅）</option>
+                      <option value="8">8 頁（加長篇）</option>
+                      <option value="10">10 頁（完整冒險）</option>
                     </select>
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Scribe Engine (Gemini Model)</label>
+                    <label className="form-label">寫作引擎（Gemini 模型）</label>
                     <select className="form-select" value={model} onChange={(e) => setModel(e.target.value)}>
-                      <option value="gemini-2.5-flash">Gemini 2.5 Flash (Super fast & smart)</option>
-                      <option value="gemini-2.0-flash">Gemini 2.0 Flash (Stable)</option>
-                      <option value="gemini-1.5-flash">Gemini 1.5 Flash (Fallback)</option>
+                      <option value="gemini-2.5-flash">Gemini 2.5 Flash（快速且聰明）</option>
+                      <option value="gemini-2.0-flash">Gemini 2.0 Flash（穩定）</option>
                     </select>
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Illustration Style</label>
+                    <label className="form-label">插畫風格</label>
                     <select 
                       className="form-select" 
                       value={illustrationStyle} 
                       onChange={(e) => setIllustrationStyle(e.target.value as 'fairy' | 'simple_strokes')}
                     >
-                      <option value="fairy">Fairy Tale / Watercolor 🎨</option>
-                      <option value="simple_strokes">Simple Strokes (Minimalist Doodle) ✏️</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">Illustration Artist (Image Generator)</label>
-                    <select className="form-select" value={imageGenerator} onChange={(e) => setImageGenerator(e.target.value as 'gemini' | 'lexica' | 'pollinations')}>
-                      <option value="lexica">Lexica Art Search (Free, Fast, Turnstile-free)</option>
-                      <option value="gemini">Google Gemini AI (Paid Key, Turnstile-free)</option>
-                      <option value="pollinations">Pollinations AI (Free, Web-based, May rate limit)</option>
+                      <option value="fairy">童話 / 水彩 🎨</option>
+                      <option value="simple_strokes">簡筆線條（極簡塗鴉）✏️</option>
                     </select>
                   </div>
 
@@ -1114,7 +1056,7 @@ export default function App() {
                       disabled={loading}
                     >
                       <Sparkles size={20} />
-                      Generate Adventure Book
+                      生成冒險故事書
                     </button>
                   </div>
                 </div>
@@ -1127,7 +1069,7 @@ export default function App() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', marginBottom: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <BookOpen size={24} style={{ color: 'var(--primary)' }} />
-                  <h3 style={{ fontSize: '1.4rem', fontWeight: 600, margin: 0 }}>Your Storybook Library ({library.length})</h3>
+                  <h3 style={{ fontSize: '1.4rem', fontWeight: 600, margin: 0 }}>我的故事書庫（{library.length}）</h3>
                 </div>
                 
                 <div style={{ display: 'flex', gap: '10px' }} className="no-print">
@@ -1145,30 +1087,30 @@ export default function App() {
                     onClick={() => {
                       syncLibrary(syncKey);
                     }}
-                    title="Force refresh synchronization with server"
+                    title="強制重新與伺服器同步"
                     disabled={syncStatus === 'syncing'}
                   >
                     <RefreshCw size={14} className={syncStatus === 'syncing' ? 'spin' : ''} />
-                    {syncStatus === 'syncing' ? 'Syncing...' : 'Sync Active'}
+                    {syncStatus === 'syncing' ? '同步中...' : '同步啟用'}
                   </button>
 
                   <button 
                     className="btn btn-secondary" 
                     style={{ padding: '6px 12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px' }}
                     onClick={handleExportLibraryJSON}
-                    title="Backup all stories to a JSON file"
+                    title="將所有故事備份成 JSON 檔"
                   >
                     <Download size={14} />
-                    Export Backup
+                    匯出備份
                   </button>
                   
                   <label 
                     className="btn btn-secondary" 
                     style={{ padding: '6px 12px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}
-                    title="Restore stories from a backup JSON file"
+                    title="從備份 JSON 檔還原故事"
                   >
                     <Plus size={14} />
-                    Import Backup
+                    匯入備份
                     <input 
                       type="file" 
                       accept=".json" 
@@ -1199,7 +1141,7 @@ export default function App() {
               {library.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
                   <HelpCircle size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
-                  <p>Your library is currently empty. Use the forge above to generate your first adventure!</p>
+                  <p>書庫目前是空的。使用上方工坊生成你的第一本冒險故事吧！</p>
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
@@ -1225,7 +1167,7 @@ export default function App() {
                         <div style={{ height: '140px', overflow: 'hidden', position: 'relative', background: '#2d3748' }}>
                           <img src={coverImageUrl} alt={book.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                           <span style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(7, 9, 19, 0.8)', padding: '4px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
-                            {book.pages.length} Pages
+                            {book.pages.length} 頁
                           </span>
                         </div>
                         
@@ -1235,10 +1177,10 @@ export default function App() {
                               {book.title}
                             </h4>
                             <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-                              Protagonist: <strong>{book.config.protagonistName}</strong>
+                              主角：<strong>{book.config.protagonistName}</strong>
                             </p>
                             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                              Created: {book.createdAt} | Theme: {book.config.theme}
+                              建立日期：{book.createdAt} | 主題：{THEME_OPTIONS.find(t => t.id === book.config.theme)?.label.split(' ')[0] || book.config.theme}
                             </p>
                           </div>
 
@@ -1251,13 +1193,13 @@ export default function App() {
                                 setCurrentPageIndex(0);
                               }}
                             >
-                              Open Book
+                              開啟故事書
                             </button>
                             <button 
                               className="btn btn-secondary" 
                               style={{ padding: '8px', color: '#ef4444', borderColor: 'rgba(239, 68, 68, 0.2)' }}
                               onClick={() => setBookToDelete(book)}
-                              title="Delete book"
+                              title="刪除故事書"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -1280,16 +1222,16 @@ export default function App() {
           <div className="glass-panel modal-content">
             <h3 style={{ fontSize: '1.3rem', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Key style={{ color: 'var(--primary)' }} />
-              Gemini API Key Required
+              需要 Gemini API Key
             </h3>
             
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '20px' }}>
-              To write stories and descriptions, this app connects directly to the official Google Gemini API. 
-              Your key is saved locally in your browser and is never uploaded anywhere else.
+              為了撰寫故事與描述，這個應用會直接連線到 Google Gemini 官方 API。
+              你的 Key 只會儲存在本機瀏覽器，不會上傳到其他地方。
             </p>
 
             <div className="form-group" style={{ marginBottom: '24px' }}>
-              <label className="form-label">Input Gemini API Key</label>
+              <label className="form-label">輸入 Gemini API Key</label>
               <input 
                 type="password" 
                 className="form-input" 
@@ -1298,14 +1240,14 @@ export default function App() {
                 onChange={(e) => setTempKey(e.target.value)}
               />
               <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
-                Don't have a key? Get one for free at <a href="https://ai.google.dev/" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)' }}>ai.google.dev</a>.
+                還沒有 Key？可以到 <a href="https://ai.google.dev/" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)' }}>ai.google.dev</a> 免費取得。
               </small>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
               {(apiKey || serverHasKey) && (
                 <button className="btn btn-secondary" onClick={() => setShowKeyModal(false)}>
-                  Cancel
+                  取消
                 </button>
               )}
               <button 
@@ -1313,7 +1255,7 @@ export default function App() {
                 onClick={() => handleSaveKey(tempKey)}
                 disabled={!tempKey.trim()}
               >
-                Save & Continue
+                儲存並繼續
               </button>
             </div>
           </div>
@@ -1326,11 +1268,11 @@ export default function App() {
           <div className="glass-panel modal-content" style={{ maxWidth: '400px' }}>
             <h3 style={{ fontSize: '1.3rem', fontWeight: 600, marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px', color: '#ef4444' }}>
               <Trash2 style={{ color: '#ef4444' }} />
-              Delete Adventure?
+              刪除冒險故事？
             </h3>
             
             <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>
-              Are you sure you want to delete <strong>"{bookToDelete.title}"</strong> forever? This action cannot be undone.
+              確定要永久刪除 <strong>「{bookToDelete.title}」</strong> 嗎？這個動作無法復原。
             </p>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
@@ -1338,7 +1280,7 @@ export default function App() {
                 className="btn btn-secondary" 
                 onClick={() => setBookToDelete(null)}
               >
-                Cancel
+                取消
               </button>
               <button 
                 className="btn btn-primary" 
@@ -1348,7 +1290,7 @@ export default function App() {
                   setBookToDelete(null);
                 }}
               >
-                Delete
+                刪除
               </button>
             </div>
           </div>

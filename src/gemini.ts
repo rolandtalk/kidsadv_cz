@@ -22,6 +22,26 @@ export interface GeneratedBook {
   pages: StoryPage[];
 }
 
+type GeminiPart = {
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+};
+
+async function getGeminiErrorMessage(response: Response): Promise<string> {
+  const text = await response.text();
+  if (!text) return response.statusText || 'Unknown error';
+
+  try {
+    const data = JSON.parse(text);
+    return data.error?.message || data.error || text;
+  } catch (error) {
+    console.warn('Failed to parse Gemini error response:', error);
+    return text;
+  }
+}
+
 export async function generateStory(apiKey: string, config: StoryConfig, model: string = 'gemini-2.5-flash'): Promise<GeneratedBook> {
   const url = `/api/generate-story`;
 
@@ -104,7 +124,7 @@ Guidelines:
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = await getGeminiErrorMessage(response);
     throw new Error(`Gemini API Error: ${response.status} - ${errorText}`);
   }
 
@@ -114,7 +134,7 @@ Guidelines:
     return JSON.parse(jsonText) as GeneratedBook;
   } catch (e) {
     console.error('Failed to parse Gemini response text:', data);
-    throw new Error('Failed to parse story JSON from Gemini API response.');
+    throw new Error('Failed to parse story JSON from Gemini API response.', { cause: e });
   }
 }
 
@@ -148,12 +168,13 @@ export async function generateImage(apiKey: string, prompt: string, model: strin
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
+    const errorText = await getGeminiErrorMessage(response);
     throw new Error(`Gemini Image Error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
-  const inlineData = data.candidates?.[0]?.content?.parts?.find((p: any) => p.inlineData)?.inlineData;
+  const parts = data.candidates?.[0]?.content?.parts as GeminiPart[] | undefined;
+  const inlineData = parts?.find((part) => part.inlineData)?.inlineData;
   
   if (!inlineData || !inlineData.data) {
     throw new Error("No image data returned from Gemini");
@@ -186,4 +207,3 @@ export async function searchLexicaImage(prompt: string): Promise<string> {
     return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=800&height=600&nologo=true&seed=${Math.floor(Math.random() * 1000000)}`;
   }
 }
-
