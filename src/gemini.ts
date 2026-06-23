@@ -138,7 +138,7 @@ Guidelines:
   }
 }
 
-export async function generateImage(apiKey: string, prompt: string, model: string = 'gemini-2.5-flash-image'): Promise<string> {
+export async function generateImage(apiKey: string, prompt: string, model: string = 'gemini-3-pro-image'): Promise<string> {
   const url = `/api/generate-image`;
   
   const headers: Record<string, string> = {
