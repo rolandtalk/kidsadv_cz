@@ -1,3 +1,7 @@
 name = "kidsadv-cz"
 pages_build_output_dir = "dist"
 compatibility_date = "2026-06-23"
+
+[[kv_namespaces]]
+binding = "LIBRARY_KV"
+id = "4c6fcf4e7e6b4669be66e8cf1e97f6c1"
