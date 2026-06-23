@@ -5,6 +5,7 @@ interface Env {
 type BookRecord = {
   id?: string;
   timestamp?: number;
+  images?: string[];
 };
 
 const jsonResponse = (data: unknown, init: ResponseInit = {}) =>
@@ -19,6 +20,35 @@ const jsonResponse = (data: unknown, init: ResponseInit = {}) =>
 const getIndexKey = (syncKey: string) => `sync-v2:${syncKey}:index`;
 const getBookPrefix = (syncKey: string) => `sync-v2:${syncKey}:book:`;
 const getBookKey = (syncKey: string, bookId: string) => `${getBookPrefix(syncKey)}${bookId}`;
+const getImageKey = (syncKey: string, bookId: string, index: number) =>
+  `sync-v2:${syncKey}:image:${bookId}:${index}`;
+
+const splitBookForStorage = (book: BookRecord) => {
+  const images = Array.isArray(book.images) ? book.images : [];
+  const storedBook = {
+    ...book,
+    images: images.map((image, index) => (image ? { kvImageIndex: index } : '')),
+  };
+
+  return { storedBook, images };
+};
+
+const hydrateBookImages = async (env: Env, syncKey: string, book: BookRecord) => {
+  if (!book.id || !Array.isArray(book.images)) {
+    return book;
+  }
+
+  const images = await Promise.all(
+    book.images.map((imageRef, index) => {
+      if (imageRef && typeof imageRef === 'object' && 'kvImageIndex' in imageRef) {
+        return env.LIBRARY_KV!.get(getImageKey(syncKey, book.id as string, index));
+      }
+      return Promise.resolve(typeof imageRef === 'string' ? imageRef : '');
+    })
+  );
+
+  return { ...book, images };
+};
 
 export async function onRequest(context: { request: Request; env: Env }) {
   const { request, env } = context;
@@ -47,7 +77,10 @@ export async function onRequest(context: { request: Request; env: Env }) {
       const bookEntries = await Promise.all(
         indexData.map((id) => env.LIBRARY_KV!.get(getBookKey(syncKey, id), 'json'))
       );
-      const books = bookEntries.filter((book): book is BookRecord => !!book && typeof book === 'object');
+      const storedBooks = bookEntries.filter((book): book is BookRecord => !!book && typeof book === 'object');
+      const books = await Promise.all(
+        storedBooks.map((book) => hydrateBookImages(env, syncKey, book))
+      );
       books.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
       return jsonResponse(books);
@@ -68,17 +101,34 @@ export async function onRequest(context: { request: Request; env: Env }) {
       const validBooks = books.filter((book: BookRecord) => book && typeof book === 'object' && book.id);
       const nextIds = validBooks.map((book: BookRecord) => book.id as string);
       const previousIds = await env.LIBRARY_KV.get(getIndexKey(key), 'json') as string[] | null;
+      const previousOnlyIds = Array.isArray(previousIds)
+        ? previousIds.filter((id) => !nextIds.includes(id))
+        : [];
+      const imageDeleteKeys: string[] = [];
+
+      for (const id of previousOnlyIds) {
+        const storedBook = await env.LIBRARY_KV.get(getBookKey(key, id), 'json') as BookRecord | null;
+        if (storedBook && Array.isArray(storedBook.images)) {
+          storedBook.images.forEach((_image, index) => imageDeleteKeys.push(getImageKey(key, id, index)));
+        }
+      }
 
       await Promise.all([
         env.LIBRARY_KV.put(getIndexKey(key), JSON.stringify(nextIds)),
-        ...validBooks.map((book: BookRecord) =>
-          env.LIBRARY_KV!.put(getBookKey(key, book.id as string), JSON.stringify(book))
-        ),
-        ...(Array.isArray(previousIds)
-          ? previousIds
-              .filter((id) => !nextIds.includes(id))
-              .map((id) => env.LIBRARY_KV!.delete(getBookKey(key, id)))
-          : []),
+        ...validBooks.flatMap((book: BookRecord) => {
+          const bookId = book.id as string;
+          const { storedBook, images } = splitBookForStorage(book);
+          return [
+            env.LIBRARY_KV!.put(getBookKey(key, bookId), JSON.stringify(storedBook)),
+            ...images.map((image, index) =>
+              image
+                ? env.LIBRARY_KV!.put(getImageKey(key, bookId, index), image)
+                : env.LIBRARY_KV!.delete(getImageKey(key, bookId, index))
+            ),
+          ];
+        }),
+        ...previousOnlyIds.map((id) => env.LIBRARY_KV!.delete(getBookKey(key, id))),
+        ...imageDeleteKeys.map((imageKey) => env.LIBRARY_KV!.delete(imageKey)),
       ]);
 
       return jsonResponse({ success: true });

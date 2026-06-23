@@ -87,20 +87,25 @@ export default function App() {
   const readSyncResponse = async (response: Response) => {
     const contentType = response.headers.get('content-type') || '';
     const text = await response.text();
+    let data: any = null;
+
+    if (contentType.includes('application/json')) {
+      try {
+        data = text ? JSON.parse(text) : null;
+      } catch {
+        throw new Error('雲端書庫資料格式無法解析，請稍後再試。');
+      }
+    }
 
     if (!response.ok) {
-      throw new Error(`雲端書庫同步失敗（HTTP ${response.status}）`);
+      throw new Error(data?.error || data?.message || `雲端書庫同步失敗（HTTP ${response.status}）`);
     }
 
     if (!contentType.includes('application/json')) {
       throw new Error('雲端書庫暫時回傳非 JSON 資料，請稍後再試。');
     }
 
-    try {
-      return text ? JSON.parse(text) : null;
-    } catch {
-      throw new Error('雲端書庫資料格式無法解析，請稍後再試。');
-    }
+    return data;
   };
 
   // Merge two library lists (resolving duplicate IDs by timestamp)
