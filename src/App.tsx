@@ -84,6 +84,25 @@ export default function App() {
   const [syncStatus, setSyncStatus] = useState<'idle' | 'syncing' | 'error'>('idle');
   const [syncError, setSyncError] = useState<string | null>(null);
 
+  const readSyncResponse = async (response: Response) => {
+    const contentType = response.headers.get('content-type') || '';
+    const text = await response.text();
+
+    if (!response.ok) {
+      throw new Error(`雲端書庫同步失敗（HTTP ${response.status}）`);
+    }
+
+    if (!contentType.includes('application/json')) {
+      throw new Error('雲端書庫暫時回傳非 JSON 資料，請稍後再試。');
+    }
+
+    try {
+      return text ? JSON.parse(text) : null;
+    } catch {
+      throw new Error('雲端書庫資料格式無法解析，請稍後再試。');
+    }
+  };
+
   // Merge two library lists (resolving duplicate IDs by timestamp)
   const mergeLibraries = (local: BookWithMetadata[], remote: BookWithMetadata[]): BookWithMetadata[] => {
     const mergedMap = new Map<string, BookWithMetadata>();
@@ -121,7 +140,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key, books })
       });
-      const data = await response.json();
+      const data = await readSyncResponse(response);
       if (data.error === 'KV_NOT_BOUND') {
         setSyncStatus('error');
         setSyncError("尚未設定 Cloudflare KV 資料庫。請在 Cloudflare 專案的 Settings > Functions > KV namespace bindings 綁定名為 'LIBRARY_KV' 的 KV 命名空間，才能啟用同步。");
@@ -140,7 +159,7 @@ export default function App() {
     setSyncError(null);
     try {
       const response = await fetch(`/api/sync?key=${encodeURIComponent(key)}`);
-      const remoteBooks = await response.json();
+      const remoteBooks = await readSyncResponse(response);
       
       if (remoteBooks && remoteBooks.error === 'KV_NOT_BOUND') {
         setSyncStatus('error');
